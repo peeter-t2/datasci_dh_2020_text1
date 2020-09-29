@@ -1,0 +1,372 @@
+---
+title: "Tekstid R-iga 1"
+output: html_notebook
+---
+
+# RStudio kasutamine
+
+See fail on R-märkmik (RNotebook). See on kirjutatud Rmarkdown keeles, mis eraldab failis tekstiosa ja koodi osa. Tekstiosa on siin, tavaseadel valgel taustal. Kood on hallil taustal.
+
+Koodi jooksutamiseks minge õigele reale või valige mingi koodijupp ja vajutage CTRL+ENTER (CMD+ENTER Mac-il). Võib vajutada ka nupule Run akna ülaosas või rohelisele *play* noolele iga halli sektsiooni ülal. See käivitab kogu koodisektsiooni.  Uue koodisektsiooni tegemiseks vajutage Insert-> R ülal või CTRL+ALT+i (CMD+ALT+i Mac-il).
+
+R-is on võimalik teha väga palju erinevat, praegu me vaatame ainult paari alusfunktsiooni, mida meil on vaja tekstide puhul. Parema ülevaate saamiseks tasub võtta mõni sissejuhatav kursus R-i.
+
+## Võrdsus ja võrratus
+
+R-is on võimalik teha lihtsamat matemaatikat: kontrollida numbrite samasust, liita-lahutada, korrutada jagada.
+
+```{r}
+1==1
+1==2
+1+2
+1/2
+
+```
+
+Samamoodi on võimalik kontrollida ka tekstielementide samasust. Tekstielemendid on R-is jutumärkides.
+
+```{r}
+"a"=="a"
+"a"=="b"
+```
+
+Väärtusi on võimalik salvestada muutujatesse. Muutuja nimi võib olla ükskõik, mis. Muutuja saab niimoodi endale väärtuse, mida saab omakorda võrrelda teiste väärtustega.
+
+```{r}
+a <- 1
+
+a == "a"
+a == 1
+```
+
+Lisaks võrdsusele saab numbrite puhul küsida ka kas üks on suurem või väiksem kui teine jne. Seda saab kombineerida ka arvutustega
+
+```{r}
+1>2
+1<2
+
+1+1<2
+1+1==2
+```
+
+## Paketid
+
+R-i kasutamisel on suur osa mängida igasugu pakettidel. Paketid võimaldavad R-is kasutada rohkem käske. Paketid on tihti omavahel seotud ja sõltuvad teineteisest. Siin kasutame kahte paketti. Oma arvutis tuleb need enne installida. Vaata tools -> install packages.
+
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+
+## Tekst kui tabel
+
+R-is on võimalik teha tekstitöötlust. Alusloogikana võime mõelda tekstist ja tekstidest tabeli kujul. Meil on siin kaasas üks tekstifail 'Anton_Hansen_Tammsaare_Tode_ja_oigus_I.utf8' (pärit siit: https://datadoi.ee/handle/33/76). Võime vaadata hetkeks faili sisse (proovige nt notepad++ programmiga). Failis on iga peatükk omal real.
+
+Kui me nüüd loeme faili sisse käsuga read_lines(), siis saame iga failirea eraldi reaks tabelis - st iga peatükk on nüüd rida tabelis.
+
+Siin kasutame nelja vahendit <- salvestamiseks, read_lines() faili lugemiseks, %>% toru andmete järjestikku töötluseks ja as_data_frame() ridade jada tabeliks tegemiseks.
+
+- <- - salvestamiseks
+- %>% (pipe) - andmete töötlusse andmiseks
+- read_lines() - faili lugemiseks
+- as_data_frame() - jada või mõni muu element tabelina
+
+
+```{r}
+
+text1 <- read_lines("Anton_Hansen_Tammsaare_Tode_ja_oigus_I.utf8") %>% as_data_frame()
+
+```
+
+Nüüd võime tabeli sisu vaadata trükkides tema nime koodilahtrisse.
+
+```{r}
+
+text1
+
+```
+
+Nüüd, et saada kätte tabelist infot, mis meid huvitab, tuleb meil hakata seda töötlema. Selleks võtame veel kaks käsku mutate() ja row_number().
+
+- mutate() - teeb uue tulba
+- row_number() - väljastab rea numbri
+
+Niisiis, teeme uue tulba chapter, mille väärtuseks on rea number. Tähelepanu, R-is on väga tähtis, kas on üks võrdusmärk = või kaks ==. Üks võrdusmärk = lisab väärtuse nagu noolgi <-. Kaks võrdusmärki kontrollib samasust.
+
+```{r}
+
+text1 <- text1 %>% 
+  mutate(chapter=row_number())
+
+```
+
+Nüüd kui meil on olemas tabelis tulp väärtustega, mida on kerge võrrelda, võime kasutada tabelist osa võtmiseks filter() käsku.
+
+- filter() - väljastab read, kus tingimus osutub tõeseks.
+
+Nt võtame ainult osa tekstist, kus on peatüki number 2.
+
+```{r}
+
+text1 %>% 
+  filter(chapter==2)
+
+```
+
+Ja viimaks tekstide puhul meid üldiselt huvitab teksti detailsemalt vaadata kui peatükki korraga. Selleks on *tidytext* paketis käsk unnest_tokens(). See käsk teeb täistekstid sõnade järjenditeks, kaotab ära kirjavahemärgid ja suured tähed. See on üks lihtsam viis teksti üksustada ehk tokeniseerida. unnest_tokens() asetab iga sõna eraldi reale.
+
+- unnest_tokens() - teeb pikematest tekstidest sõnad
+
+```{r}
+
+words <- text1 %>% 
+  unnest_tokens(word, value)
+
+```
+
+Samamoodi kui me panime peatükkidele numbrid, võime me panna ka sõnadele numbrid külge järjekorra alusel.
+
+```{r}
+
+words <- text1 %>% 
+  unnest_tokens(word, value) %>% 
+  mutate(token=row_number())
+
+```
+
+Ja nüüd saame tabelit juba filtreerida sõnade alusel. filter() käsuga saame leida, millistel ridadel on väärtus word võrdne == mingi sõnaga. Nt sõnaga krõõt.
+
+```{r}
+
+words %>% 
+  filter(word=="krõõt")
+
+```
+
+Hea viis tabeli sisust aru saada on selle kujutamise kaudu. Selle jaoks on populaarne R-is pakett ggplot2. See on osa tidyverse pakettidest ning on seetõttu juba sisse loetud.
+
+Paneme x teljele sõna numbri ja y teljele sõna nime ja teeme punktgraafiku, kus iga punkt on püstise joone kujuga |.
+
+```{r}
+
+words %>% 
+  filter(word=="krõõt") %>% 
+  ggplot(aes(x=token,y=word))+
+  geom_point(shape="|")
+
+```
+
+Võime sama teha sõnaga andres.
+
+```{r}
+
+words %>% 
+  filter(word=="andres") %>% 
+  ggplot(aes(x=token,y=word))+
+  geom_point(shape="|")
+
+```
+
+Ja sõnaga pearu.
+
+```{r}
+
+words %>% 
+  filter(word=="pearu") %>% 
+  ggplot(aes(x=token,y=word))+
+  geom_point(shape="|")
+
+```
+
+Kasutades filtrit on meil võimalus panna ka mitu võimalikku tingimust. Neid võib eristada ja-ga & kui nad peavad koos tõesed olema või või-ga | kui vähemalt üks neist peab tõene olema. Nii saame korraga kätte kõik read kus on sõna ükskõik, milline kolmest.
+
+```{r}
+
+words %>% 
+  filter(word=="krõõt"|word=="andres"|word=="pearu") %>% 
+  ggplot(aes(x=token,y=word))+
+  geom_point(shape="|")
+
+```
+
+Võime näiteks vaadata tuntud tegu raamatust, kraavi kahasse kaevamist. Millal tekstis sellest räägiti?
+
+```{r}
+
+words %>% 
+  filter(word=="kahasse"|word=="kraav") %>% 
+  ggplot(aes(x=token,y=word))+
+  geom_point(shape="|")
+
+```
+
+Nagu näha on kraavist juttu peamiselt teksti algusosas. Võime mõelda veel, et mille ümber teose tegevus käib ja kuvada neid sõnu.
+
+```{r}
+
+words %>% 
+  filter(word=="vilja"|word=="raha"|word=="kõrtsis") %>% 
+  ggplot(aes(x=token,y=word))+
+  geom_point(shape="|")
+
+```
+
+Vali välja 2-4 sõna ja kuva nende asukohti tekstis.
+
+```{r}
+
+```
+
+
+## Loendamine
+
+Teksti analüüsil on oluline sõnade asukoht, aga paljude meetodite puhul huvitab meid puhtalt kui palju neid sõnu oli. Selle jaoks on *tidyverse* pakettides käsk count(), mis loendab väärtusi.
+
+- count() - loendab väärtusi
+
+Kui me ei märgi millist väärtust loendada, loeb ta lihtsalt ridu.
+
+```{r}
+
+words %>% 
+  count()
+
+```
+
+Kui me palume tal loendada sõnade tulba väärtusi, siis ta loendab sõnu. Võime lisada sinna ka lisaparameetri sort=TRUE või sort=T, et ta sorteeriks need kahanevas järjekorras.
+
+```{r}
+
+words %>% 
+  count(word,sort=T)
+
+```
+
+Võime salvestada selle tabelina ja sirvida lähemalt.
+
+```{r}
+
+
+wordcounts <- words %>% 
+  count(word,sort=T)
+
+```
+
+Üks tarvilik käsk *tidyverse*'is on group_by(), millega on võimalik grupeerida andmeid teatud alustel. Grupeeritud andmete puhul töötavad mitmed käsud veidi teistmoodi.
+
+- group_by() - grupeerib mingi muutuja alusel
+
+Näiteks me võime loendada sõnu, aga grupeerime andmestiku enne seda peatüki alusel. Vaadake tabelit. Mis nüüd juhtus?
+
+```{r}
+
+
+wordcounts <- words %>% 
+  group_by(chapter) %>% 
+  count(word,sort=T)
+
+```
+
+Seekord luges käsk kokku sõnad iga peatüki kohta. Mida me saaksime selle loendiga teh. Mis on puudu?
+
+```{r}
+
+wordcounts %>% 
+  group_by(chapter) %>% 
+  filter(word=="krõõt"|word=="andres"|word=="pearu") %>% 
+  ggplot(aes(x=chapter,y=n,color=word))+
+  geom_point()+
+  geom_line()
+
+```
+
+
+Kui me tahame sõnu võrrelda, on oluline kui suurest korpusest nad osa on. Võime kasutada count() funktsiooni, et lugeda kokku peatükkide väärtusi. Vaatame ka seda graafiliselt.
+
+```{r}
+
+words %>% 
+  count(chapter) %>% 
+  ggplot(aes(x=chapter,y=n))+
+  geom_point()+
+  geom_line()
+
+```
+
+Niisiis peaksime seda infot arvesse võtma kui me hindame kui palju mõnd nimetust oli. Selleks me võime jagada esinemiskorrad sõnade arvuga igas tekstis. Selleks saame kasutada mutate() käsku grupeeritud andmestikul. Kuna andmed on jaotatud peatükkide kaupa gruppideks, saame peatükis esinevate sõnade arvu liites kokku kõik esinemiskorrad. Selleks saame kasutada käsku sum().
+
+- sum() liidab kokku numberväärtused.
+
+```{r}
+
+wordcounts %>% 
+  group_by(chapter) %>% 
+  mutate(freq=n/sum(n))
+
+```
+
+
+Samamoodi nagu varem, saame kasutada filter käsku sõnade leidmiseks.
+
+```{r}
+
+wordcounts %>% 
+  group_by(chapter) %>% 
+  mutate(freq=n/sum(n)) %>% 
+  filter(word=="krõõt"|word=="andres"|word=="pearu")
+
+```
+
+Ja võime need tulemused ka kuvada. Paneme x teljele peatüki numbri, y teljele sageduse ja värvime sõnad ka eri värvi. Need parameetrid lähevad käiku nii punktide kui joonte joonistamisel.
+
+```{r}
+
+
+wordcounts %>% 
+  group_by(chapter) %>% 
+  mutate(freq=n/sum(n)) %>% 
+  filter(word=="krõõt"|word=="andres"|word=="pearu") %>% 
+  ggplot(aes(x=chapter,y=freq,color=word))+
+  geom_point()+
+  geom_line()
+
+```
+
+Võime otsida ka teisi nimesid, millal neist rohkem juttu on.
+
+```{r}
+
+
+wordcounts %>% 
+  group_by(chapter) %>% 
+  mutate(freq=n/sum(n)) %>% 
+  filter(word=="liisi"|word=="maret"|word=="indrek") %>% 
+  ggplot(aes(x=chapter,y=freq,color=word))+
+  geom_point()+
+  geom_line()
+
+```
+
+Ja võime proovida ka teisi sõnu.
+
+```{r}
+
+
+wordcounts %>% 
+  group_by(chapter) %>% 
+  mutate(freq=n/sum(n)) %>% 
+  filter(word=="talv"|word=="talvel"|word=="suvi"|word=="suvel"|word=="aasta") %>% 
+  ggplot(aes(x=chapter,y=freq,color=word))+
+  geom_point()+
+  geom_line()
+
+```
+
+Vali ise välja 3-5 sõna, mille sagedust tekstides võrrelda.
+
+```{r}
+
+```
+
+
